@@ -128,6 +128,13 @@ def create_app():
             return redirect(url_for("index"))
         return render_template("register.html")
 
+    @app.route("/run-now", methods=["POST"])
+    @login_required
+    def run_now():
+        job_runner(app)
+        flash("Monitoreo completo ejecutado. Notificaciones enviadas.", "success")
+        return redirect(url_for("index"))
+
     @app.route("/check/<int:domain_id>", methods=["POST"])
     @login_required
     def manual_check(domain_id):

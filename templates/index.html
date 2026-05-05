@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Listado de dominios</h2>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+  <h2 style="margin:0;">Listado de dominios</h2>
+  <form action="{{ url_for('run_now') }}" method="post" onsubmit="return confirm('¿Ejecutar monitoreo completo y enviar notificaciones?');">
+    <button type="submit" class="btn-primary" style="font-size:14px;">⚡ Monitorear todo ahora</button>
+  </form>
+</div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
