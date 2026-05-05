@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container" style="max-width: 620px;">
+  <h2>Configuración del Monitor</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-messages">
+        {% for category, message in messages %}
+          <li style="color: {{ 'red' if category == 'error' else 'green' }};">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST">
+    <h3 style="color: var(--primary); margin: 0 0 12px;">Horarios automáticos (Lima)</h3>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px;">
+      <div>
+        <label>Hora 1 — Hora (0-23)</label>
+        <input type="number" name="hour1" min="0" max="23" value="{{ cfg.hour1 }}" required>
+      </div>
+      <div>
+        <label>Hora 1 — Minuto (0-59)</label>
+        <input type="number" name="min1" min="0" max="59" value="{{ cfg.min1 }}" required>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13px; margin-bottom:16px;">
+      Primer monitoreo: {{ cfg.hour1 }}:{{ '%02d'|format(cfg.min1|int) }}
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px;">
+      <div>
+        <label>Hora 2 — Hora (0-23)</label>
+        <input type="number" name="hour2" min="0" max="23" value="{{ cfg.hour2 }}" required>
+      </div>
+      <div>
+        <label>Hora 2 — Minuto (0-59)</label>
+        <input type="number" name="min2" min="0" max="59" value="{{ cfg.min2 }}" required>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13px; margin-bottom:24px;">
+      Segundo monitoreo: {{ cfg.hour2 }}:{{ '%02d'|format(cfg.min2|int) }}
+    </p>
+
+    <h3 style="color: var(--primary); margin: 0 0 12px;">Notificaciones</h3>
+
+    <label for="gchat_webhook">Webhook Google Chat</label>
+    <input type="text" name="gchat_webhook" id="gchat_webhook"
+           value="{{ cfg.gchat_webhook }}"
+           placeholder="https://chat.googleapis.com/v1/spaces/...">
+    <p class="muted" style="font-size:12px; margin-top:-10px; margin-bottom:20px;">
+      Déjalo vacío para desactivar las notificaciones de Google Chat.
+    </p>
+
+    <button type="submit">Guardar configuración</button>
+  </form>
+</div>
+{% endblock %}

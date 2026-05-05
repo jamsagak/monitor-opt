@@ -39,3 +39,25 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Settings(db.Model):
+    __tablename__ = "settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=True)
+
+    @classmethod
+    def get(cls, key, default=None):
+        row = cls.query.filter_by(key=key).first()
+        return row.value if row else default
+
+    @classmethod
+    def set(cls, key, value):
+        row = cls.query.filter_by(key=key).first()
+        if row:
+            row.value = value
+        else:
+            db.session.add(cls(key=key, value=value))
+        db.session.commit()

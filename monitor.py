@@ -8,7 +8,7 @@ import requests
 from playwright.sync_api import sync_playwright
 from flask import current_app
 
-from models import db, Domain
+from models import db, Domain, Settings
 
 
 def normalize_url(domain: str) -> str:
@@ -211,6 +211,34 @@ def email_digest(domains):
     return html
 
 
+def send_google_chat(domains):
+    webhook_url = Settings.get("gchat_webhook")
+    if not webhook_url:
+        return
+
+    tz = pytz.timezone(current_app.config.get("TIMEZONE", "America/Lima"))
+    local_now = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(tz)
+
+    ok = [d for d in domains if d.last_status == "OK"]
+    err = [d for d in domains if d.last_status != "OK"]
+
+    lines = [f"🔍 *Monitoreo de sitios — {local_now.strftime('%d/%m/%Y %H:%M')} (Lima)*\n"]
+
+    for d in domains:
+        icon = "🟢" if d.last_status == "OK" else "🔴"
+        code = f" — HTTP {d.last_http_code}" if d.last_http_code else ""
+        error = f" — _{d.last_error}_" if d.last_status != "OK" and d.last_error else ""
+        lines.append(f"{icon} *{d.client}* ({d.domain}){code}{error}")
+
+    lines.append(f"\n✅ Operativos: {len(ok)}   ❌ Con problemas: {len(err)}")
+
+    payload = {"text": "\n".join(lines)}
+    try:
+        requests.post(webhook_url, json=payload, timeout=10)
+    except Exception as e:
+        print(f"[WARN] Google Chat error: {e}")
+
+
 def run_full_cycle():
     domains = Domain.query.order_by(Domain.client.asc()).all()
     if not domains:
@@ -222,3 +250,4 @@ def run_full_cycle():
             shots.append(p)
     html = email_digest(domains)
     send_email("Monitoreo de sitios (ejecución programada)", html, attachments=shots)
+    send_google_chat(domains)

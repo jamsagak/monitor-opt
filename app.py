@@ -12,7 +12,7 @@ from flask_login import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
-from models import db, Domain, User
+from models import db, Domain, User, Settings
 from monitor import run_full_cycle, check_and_capture
 
 
@@ -46,27 +46,13 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # 🔹 Configurar el scheduler
+    # Scheduler
     scheduler = BackgroundScheduler(timezone=app.config.get("TIMEZONE", "America/Lima"))
-
-    scheduler.add_job(
-        lambda: job_runner(app),
-        "cron",
-        hour=8, minute=0,
-        id="morning_capture",
-        replace_existing=True
-    )
-
-    scheduler.add_job(
-        lambda: job_runner(app),
-        "cron",
-        hour=17, minute=0,
-        id="evening_capture",
-        replace_existing=True
-    )
-
     scheduler.start()
     app.scheduler = scheduler
+
+    with app.app_context():
+        reschedule_jobs(app)
 
     # 🔹 Filtro Jinja para mostrar hora local
     @app.template_filter("localtime")
@@ -255,10 +241,66 @@ def create_app():
         flash(f"Usuario '{u.username}' eliminado.", "success")
         return redirect(url_for("admin_users"))
 
+    # -------------------
+    # Admin: Settings
+    # -------------------
+    @app.route("/admin/settings", methods=["GET", "POST"])
+    @admin_required
+    def admin_settings():
+        if request.method == "POST":
+            # Horarios
+            hour1 = request.form.get("hour1", "8").strip()
+            min1  = request.form.get("min1",  "0").strip()
+            hour2 = request.form.get("hour2", "16").strip()
+            min2  = request.form.get("min2",  "0").strip()
+
+            Settings.set("schedule_hour1", hour1)
+            Settings.set("schedule_min1",  min1)
+            Settings.set("schedule_hour2", hour2)
+            Settings.set("schedule_min2",  min2)
+
+            # Webhook Google Chat
+            gchat = request.form.get("gchat_webhook", "").strip()
+            Settings.set("gchat_webhook", gchat)
+
+            reschedule_jobs(app)
+            flash("Configuración guardada.", "success")
+            return redirect(url_for("admin_settings"))
+
+        cfg = {
+            "hour1": Settings.get("schedule_hour1", "8"),
+            "min1":  Settings.get("schedule_min1",  "0"),
+            "hour2": Settings.get("schedule_hour2", "16"),
+            "min2":  Settings.get("schedule_min2",  "0"),
+            "gchat_webhook": Settings.get("gchat_webhook", ""),
+        }
+        return render_template("admin_settings.html", cfg=cfg)
+
     return app
 
 
-def job_runner(app: Flask):
+def reschedule_jobs(app):
+    scheduler = app.scheduler
+    tz = app.config.get("TIMEZONE", "America/Lima")
+
+    h1 = int(Settings.get("schedule_hour1", "8"))
+    m1 = int(Settings.get("schedule_min1",  "0"))
+    h2 = int(Settings.get("schedule_hour2", "16"))
+    m2 = int(Settings.get("schedule_min2",  "0"))
+
+    for job_id, hour, minute in [("job1", h1, m1), ("job2", h2, m2)]:
+        if scheduler.get_job(job_id):
+            scheduler.remove_job(job_id)
+        scheduler.add_job(
+            lambda: job_runner(app),
+            "cron",
+            hour=hour, minute=minute,
+            timezone=tz,
+            id=job_id,
+        )
+
+
+def job_runner(app):
     with app.app_context():
         run_full_cycle()
 

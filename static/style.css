@@ -234,6 +234,11 @@ button.danger:hover {
 }
 
 
+/* MUTED TEXT */
+.muted {
+  color: var(--muted);
+}
+
 /* FOOTER */
 footer {
   padding: 20px;

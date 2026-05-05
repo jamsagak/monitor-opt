@@ -18,6 +18,7 @@
         <a href="{{ url_for('register') }}">Registrar Dominio</a>
         {% if current_user.is_admin %}
           <a href="{{ url_for('admin_users') }}">Usuarios</a>
+          <a href="{{ url_for('admin_settings') }}">Configuración</a>
         {% endif %}
         <a href="{{ url_for('logout') }}" style="border-color: var(--red); color: var(--red);">Cerrar sesión</a>
       {% endif %}
