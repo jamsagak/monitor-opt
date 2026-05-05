@@ -1,4 +1,5 @@
 import os
+import threading
 from functools import wraps
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
@@ -131,8 +132,9 @@ def create_app():
     @app.route("/run-now", methods=["POST"])
     @login_required
     def run_now():
-        job_runner(app)
-        flash("Monitoreo completo ejecutado. Notificaciones enviadas.", "success")
+        t = threading.Thread(target=job_runner, args=(app,), daemon=True)
+        t.start()
+        flash("Monitoreo iniciado en segundo plano. Las notificaciones llegarán en unos minutos.", "success")
         return redirect(url_for("index"))
 
     @app.route("/check/<int:domain_id>", methods=["POST"])
