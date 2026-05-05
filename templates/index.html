@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Listado de dominios</h2>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flash-messages">
+      {% for category, message in messages %}
+        <li style="color: {{ 'red' if category == 'error' else 'green' }};">
+          {{ message }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<table>
+  <thead>
+    <tr>
+      <th>Dominio</th>
+      <th>Cliente</th>
+      <th>Proveedor</th>
+      <th>Vencimiento</th>
+      <th>Estado</th>
+      <th>Código HTTP</th>
+      <th>Error</th>
+      <th>Última captura</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in domains %}
+    <tr>
+      <td>{{ d.domain }}</td>
+      <td>{{ d.client }}</td>
+      <td>{{ d.provider or "" }}</td>
+      <td>
+        {% if d.expiry_date %}
+          {{ d.expiry_date }}{% if d.days_to_expiry() is not none %} ({{ d.days_to_expiry() }} días){% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% set ok = d.last_status == "OK" %}
+        <span class="status-dot {{ 'green' if ok else 'red' }}"></span>
+        {{ d.last_status or "N/A" }}
+      </td>
+      <td>
+        {% if d.last_http_code %}
+          HTTP {{ d.last_http_code }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>
+        {% if d.last_error %}
+          <div class="muted"><small>{{ d.last_error }}</small></div>
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td class="thumb-cell">
+        {% if d.last_screenshot_path %}
+          <div class="muted" style="margin-bottom:6px;">
+            <small>
+              Última captura:
+              {{ d.last_checked_at|localtime }}
+            </small>
+          </div>
+          {% set rel = d.last_screenshot_path.replace('static/', '') %}
+          <a href="{{ url_for('static', filename=rel) }}" target="_blank">
+            <img src="{{ url_for('static', filename=rel) }}" alt="{{ d.domain }} screenshot">
+          </a>
+        {% else %}
+          <em>Sin captura</em>
+        {% endif %}
+      </td>
+
+      <td>
+        <form action="{{ url_for('manual_check', domain_id=d.id) }}" method="post" style="display:inline;">
+  <button type="submit" class="btn-primary">Chequear ahora</button>
+</form>
+<form action="{{ url_for('delete_domain', domain_id=d.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Eliminar dominio?');">
+  <button type="submit" class="danger">Eliminar</button>
+</form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

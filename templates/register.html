@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+  <h2>Registrar dominio</h2>
+  <form method="post">
+    <label for="domain">Dominio</label>
+    <input type="text" name="domain" id="domain" required>
+
+    <label for="client">Cliente</label>
+    <input type="text" name="client" id="client" required>
+
+    <label for="contact">Contacto</label>
+    <input type="text" name="contact" id="contact">
+
+    <label for="provider">Proveedor</label>
+    <input type="text" name="provider" id="provider">
+
+    <label for="expiry">Fecha de vencimiento</label>
+    <input type="date" name="expiry" id="expiry">
+
+    <button type="submit">Registrar</button>
+  </form>
+</div>
+{% endblock %}

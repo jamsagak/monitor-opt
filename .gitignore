@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables (secrets)
+.env
+
+# Database
+*.db
+
+# Screenshots (generated at runtime)
+static/screenshots/*.jpg
+static/screenshots/*.png
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Passenger
+tmp/
