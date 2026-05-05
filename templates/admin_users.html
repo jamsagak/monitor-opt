@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Gestión de Usuarios</h2>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flash-messages">
+      {% for category, message in messages %}
+        <li style="color: {{ 'red' if category == 'error' else 'green' }};">
+          {{ message }}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<div style="margin-bottom: 16px;">
+  <a href="{{ url_for('admin_create_user') }}" class="btn-secondary">+ Nuevo Usuario</a>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Usuario</th>
+      <th>Rol</th>
+      <th>Creado</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td>
+        {% if u.is_admin %}
+          <span style="color: var(--primary); font-weight: 600;">Admin</span>
+        {% else %}
+          Usuario
+        {% endif %}
+      </td>
+      <td>{{ u.created_at|localtime }}</td>
+      <td>
+        <a href="{{ url_for('admin_edit_user', user_id=u.id) }}" class="btn-secondary" style="font-size:13px; padding:6px 10px;">Editar</a>
+        {% if u.id != current_user.id %}
+        <form action="{{ url_for('admin_delete_user', user_id=u.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Eliminar usuario {{ u.username }}?');">
+          <button type="submit" class="danger" style="font-size:13px; padding:6px 10px;">Eliminar</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

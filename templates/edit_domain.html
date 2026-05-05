@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+  <h2>Editar dominio</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-messages">
+        {% for category, message in messages %}
+          <li style="color: {{ 'red' if category == 'error' else 'green' }};">
+            {{ message }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post">
+    <label for="domain">Dominio</label>
+    <input type="text" name="domain" id="domain" value="{{ domain.domain }}" required>
+
+    <label for="client">Cliente</label>
+    <input type="text" name="client" id="client" value="{{ domain.client }}" required>
+
+    <label for="contact">Contacto</label>
+    <input type="text" name="contact" id="contact" value="{{ domain.contact or '' }}">
+
+    <label for="provider">Proveedor</label>
+    <input type="text" name="provider" id="provider" value="{{ domain.provider or '' }}">
+
+    <label for="expiry">Fecha de vencimiento</label>
+    <input type="date" name="expiry" id="expiry" value="{{ domain.expiry_date or '' }}">
+
+    <button type="submit">Guardar cambios</button>
+  </form>
+
+  <div style="text-align: center; margin-top: 12px;">
+    <a href="{{ url_for('index') }}" style="color: var(--muted); text-decoration: none;">Volver al listado</a>
+  </div>
+</div>
+{% endblock %}

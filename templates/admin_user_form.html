@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+  <h2>{{ "Editar Usuario" if user else "Nuevo Usuario" }}</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-messages">
+        {% for category, message in messages %}
+          <li style="color: {{ 'red' if category == 'error' else 'green' }};">
+            {{ message }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST">
+    <label for="username">Usuario (email)</label>
+    <input type="text" name="username" id="username" value="{{ user.username if user else '' }}" required>
+
+    <label for="password">Contraseña{% if user %} (dejar vacío para no cambiar){% endif %}</label>
+    <input type="password" name="password" id="password" {{ '' if user else 'required' }}>
+
+    <div style="margin-bottom: 16px;">
+      <label style="display: inline; cursor: pointer;">
+        <input type="checkbox" name="is_admin" {{ 'checked' if user and user.is_admin else '' }}>
+        Administrador
+      </label>
+    </div>
+
+    <button type="submit">{{ "Guardar cambios" if user else "Crear usuario" }}</button>
+  </form>
+
+  <div style="text-align: center; margin-top: 12px;">
+    <a href="{{ url_for('admin_users') }}" style="color: var(--muted); text-decoration: none;">Volver a usuarios</a>
+  </div>
+</div>
+{% endblock %}

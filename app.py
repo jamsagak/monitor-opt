@@ -1,6 +1,7 @@
 import os
+from functools import wraps
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_migrate import Migrate
 import pytz
@@ -8,11 +9,21 @@ from flask_login import (
     LoginManager, login_user, login_required,
     logout_user, current_user
 )
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
 from models import db, Domain, User
 from monitor import run_full_cycle, check_and_capture
+
+
+def admin_required(f):
+    @wraps(f)
+    @login_required
+    def decorated(*args, **kwargs):
+        if not current_user.is_admin:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
 
 
 def create_app():
@@ -139,6 +150,32 @@ def create_app():
         flash(f"Monitoreo ejecutado para {d.domain}.", "success")
         return redirect(url_for("index"))
 
+    @app.route("/edit/<int:domain_id>", methods=["GET", "POST"])
+    @login_required
+    def edit_domain(domain_id):
+        d = Domain.query.get_or_404(domain_id)
+        if request.method == "POST":
+            d.domain = request.form.get("domain", "").strip()
+            d.client = request.form.get("client", "").strip()
+            d.contact = request.form.get("contact", "").strip()
+            d.provider = request.form.get("provider", "").strip()
+            expiry = request.form.get("expiry", "").strip()
+
+            if not d.domain or not d.client:
+                flash("Dominio y Cliente son obligatorios.", "error")
+                return redirect(url_for("edit_domain", domain_id=d.id))
+
+            try:
+                d.expiry_date = datetime.strptime(expiry, "%Y-%m-%d").date() if expiry else None
+            except ValueError:
+                flash("Fecha de caducidad inválida.", "error")
+                return redirect(url_for("edit_domain", domain_id=d.id))
+
+            db.session.commit()
+            flash("Dominio actualizado.", "success")
+            return redirect(url_for("index"))
+        return render_template("edit_domain.html", domain=d)
+
     @app.route("/delete/<int:domain_id>", methods=["POST"])
     @login_required
     def delete_domain(domain_id):
@@ -147,6 +184,76 @@ def create_app():
         db.session.commit()
         flash("Dominio eliminado.", "success")
         return redirect(url_for("index"))
+
+    # -------------------
+    # Admin: User management
+    # -------------------
+    @app.route("/admin/users")
+    @admin_required
+    def admin_users():
+        users = User.query.order_by(User.username.asc()).all()
+        return render_template("admin_users.html", users=users)
+
+    @app.route("/admin/users/create", methods=["GET", "POST"])
+    @admin_required
+    def admin_create_user():
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "").strip()
+            is_admin = request.form.get("is_admin") == "on"
+
+            if not username or not password:
+                flash("Usuario y contraseña son obligatorios.", "error")
+                return redirect(url_for("admin_create_user"))
+
+            if User.query.filter_by(username=username).first():
+                flash("Ese usuario ya existe.", "error")
+                return redirect(url_for("admin_create_user"))
+
+            u = User(
+                username=username,
+                password_hash=generate_password_hash(password),
+                is_admin=is_admin,
+            )
+            db.session.add(u)
+            db.session.commit()
+            flash(f"Usuario '{username}' creado.", "success")
+            return redirect(url_for("admin_users"))
+        return render_template("admin_user_form.html", user=None)
+
+    @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def admin_edit_user(user_id):
+        u = User.query.get_or_404(user_id)
+        if request.method == "POST":
+            u.username = request.form.get("username", "").strip()
+            is_admin = request.form.get("is_admin") == "on"
+            password = request.form.get("password", "").strip()
+
+            if not u.username:
+                flash("El nombre de usuario es obligatorio.", "error")
+                return redirect(url_for("admin_edit_user", user_id=u.id))
+
+            u.is_admin = is_admin
+            if password:
+                u.password_hash = generate_password_hash(password)
+
+            db.session.commit()
+            flash(f"Usuario '{u.username}' actualizado.", "success")
+            return redirect(url_for("admin_users"))
+        return render_template("admin_user_form.html", user=u)
+
+    @app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+    @admin_required
+    def admin_delete_user(user_id):
+        u = User.query.get_or_404(user_id)
+        if u.id == current_user.id:
+            flash("No puedes eliminarte a ti mismo.", "error")
+            return redirect(url_for("admin_users"))
+        db.session.delete(u)
+        db.session.commit()
+        flash(f"Usuario '{u.username}' eliminado.", "success")
+        return redirect(url_for("admin_users"))
 
     return app
 
