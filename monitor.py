@@ -111,7 +111,7 @@ def send_email(subject: str, html: str, attachments=None):
     api_key = cfg.get("SMTP_PASS")
 
     # Usar Brevo API si hay clave disponible (evita que Exim local intercepte SMTP)
-    if api_key and api_key.startswith("xsmtpsib-"):
+    if api_key and (api_key.startswith("xsmtpsib-") or api_key.startswith("xkeysib-")):
         _send_email_brevo_api(subject, html, cfg)
         return
 
