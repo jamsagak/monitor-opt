@@ -266,6 +266,19 @@ def email_digest(domains):
     return html
 
 
+def _clean_error(msg: str, max_len: int = 120) -> str:
+    """Toma solo la primera línea del error y recorta los logs de Playwright."""
+    if not msg:
+        return ""
+    # Quitar todo lo que venga después de los separadores de logs de Playwright
+    for sep in ["=====", "navigating to", " | screenshot:"]:
+        if sep in msg:
+            msg = msg[:msg.index(sep)]
+    # Solo la primera línea
+    msg = msg.split("\n")[0].strip()
+    return msg[:max_len] + ("…" if len(msg) > max_len else "")
+
+
 def send_google_chat(domains):
     webhook_url = Settings.get("gchat_webhook")
     if not webhook_url:
@@ -282,7 +295,10 @@ def send_google_chat(domains):
     for d in domains:
         icon = "🟢" if d.last_status == "OK" else "🔴"
         code = f" — HTTP {d.last_http_code}" if d.last_http_code else ""
-        error = f" — _{d.last_error}_" if d.last_status != "OK" and d.last_error else ""
+        # Mostrar dominio como texto plano (sin https://) para evitar previews de imagen
+        error = ""
+        if d.last_status != "OK" and d.last_error:
+            error = f" — _{_clean_error(d.last_error)}_"
         lines.append(f"{icon} *{d.client}* ({d.domain}){code}{error}")
 
     lines.append(f"\n✅ Operativos: {len(ok)}   ❌ Con problemas: {len(err)}")
