@@ -82,9 +82,10 @@ thead th {
   border-bottom: 1px solid var(--border);
 }
 td, th {
-  padding: 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  vertical-align: middle;
+  font-size: 14px;
 }
 tr:last-child td { border-bottom: none; }
 

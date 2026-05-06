@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
   <h2 style="margin:0;">Listado de dominios</h2>
   <form action="{{ url_for('run_now') }}" method="post" onsubmit="return confirm('¿Ejecutar monitoreo completo y enviar notificaciones?');">
-    <button type="submit" class="btn-primary" style="font-size:14px;">⚡ Monitorear todo ahora</button>
+    <button type="submit" class="btn-primary">⚡ Monitorear todo ahora</button>
   </form>
 </div>
 
@@ -11,9 +11,7 @@
   {% if messages %}
     <ul class="flash-messages">
       {% for category, message in messages %}
-        <li style="color: {{ 'red' if category == 'error' else 'green' }};">
-          {{ message }}
-        </li>
+        <li style="color: {{ 'red' if category == 'error' else 'green' }};">{{ message }}</li>
       {% endfor %}
     </ul>
   {% endif %}
@@ -22,74 +20,74 @@
 <table>
   <thead>
     <tr>
-      <th>Dominio</th>
-      <th>Cliente</th>
-      <th>Proveedor</th>
-      <th>Vencimiento</th>
-      <th>Estado</th>
-      <th>Código HTTP</th>
-      <th>Error</th>
-      <th>Última captura</th>
-      <th>Acciones</th>
+      <th style="width:18%">Dominio</th>
+      <th style="width:14%">Cliente</th>
+      <th style="width:10%">Proveedor</th>
+      <th style="width:12%">Vencimiento</th>
+      <th style="width:9%">Estado</th>
+      <th style="width:7%">HTTP</th>
+      <th style="width:14%">Último chequeo</th>
+      <th style="width:16%">Acciones</th>
     </tr>
   </thead>
   <tbody>
     {% for d in domains %}
     <tr>
-      <td>{{ d.domain }}</td>
+      <td>
+        <a href="https://{{ d.domain }}" target="_blank" style="color:var(--primary); text-decoration:none; word-break:break-all;">
+          {{ d.domain }}
+        </a>
+        {% if d.last_screenshot_path %}
+          {% set rel = d.last_screenshot_path.replace('static/', '') %}
+          <div style="margin-top:6px;">
+            <a href="{{ url_for('static', filename=rel) }}" target="_blank">
+              <img src="{{ url_for('static', filename=rel) }}" alt="captura"
+                   style="width:100%;max-width:160px;height:auto;border-radius:4px;border:1px solid var(--border);">
+            </a>
+          </div>
+        {% endif %}
+      </td>
       <td>{{ d.client }}</td>
-      <td>{{ d.provider or "" }}</td>
+      <td class="muted">{{ d.provider or "—" }}</td>
       <td>
         {% if d.expiry_date %}
-          {{ d.expiry_date }}{% if d.days_to_expiry() is not none %} ({{ d.days_to_expiry() }} días){% endif %}
+          {% set days = d.days_to_expiry() %}
+          <span style="{% if days is not none and days < 30 %}color:var(--red);font-weight:600;{% elif days is not none and days < 60 %}color:#ca8a04;{% endif %}">
+            {{ d.expiry_date }}
+          </span>
+          {% if days is not none %}
+            <div class="muted" style="font-size:12px;">{{ days }} días</div>
+          {% endif %}
         {% else %}
-          —
+          <span class="muted">—</span>
         {% endif %}
       </td>
       <td>
         {% set ok = d.last_status == "OK" %}
         <span class="status-dot {{ 'green' if ok else 'red' }}"></span>
-        {{ d.last_status or "N/A" }}
-      </td>
-      <td>
-        {% if d.last_http_code %}
-          HTTP {{ d.last_http_code }}
-        {% else %}
-          —
-        {% endif %}
-      </td>
-      <td>
+        <span style="color: {{ 'var(--primary)' if ok else 'var(--red)' }}; font-weight:600;">
+          {{ d.last_status or "N/A" }}
+        </span>
         {% if d.last_error %}
-          <div class="muted"><small>{{ d.last_error }}</small></div>
-        {% else %}
-          —
+          <div class="muted" style="font-size:11px; margin-top:4px; word-break:break-word;">{{ d.last_error[:80] }}</div>
         {% endif %}
       </td>
-      <td class="thumb-cell">
-        {% if d.last_screenshot_path %}
-          <div class="muted" style="margin-bottom:6px;">
-            <small>
-              Última captura:
-              {{ d.last_checked_at|localtime }}
-            </small>
-          </div>
-          {% set rel = d.last_screenshot_path.replace('static/', '') %}
-          <a href="{{ url_for('static', filename=rel) }}" target="_blank">
-            <img src="{{ url_for('static', filename=rel) }}" alt="{{ d.domain }} screenshot">
-          </a>
-        {% else %}
-          <em>Sin captura</em>
-        {% endif %}
+      <td class="muted">{{ d.last_http_code or "—" }}</td>
+      <td class="muted" style="font-size:13px;">
+        {{ d.last_checked_at|localtime if d.last_checked_at else "—" }}
       </td>
-
       <td>
-        <form action="{{ url_for('manual_check', domain_id=d.id) }}" method="post" style="display:inline;">
-          <button type="submit" class="btn-primary">Chequear ahora</button>
-        </form>
-        <a href="{{ url_for('edit_domain', domain_id=d.id) }}" class="btn-secondary" style="display:inline-block; font-size:13px; padding:8px 12px;">Editar</a>
-        <form action="{{ url_for('delete_domain', domain_id=d.id) }}" method="post" style="display:inline;" onsubmit="return confirm('¿Eliminar dominio?');">
-          <button type="submit" class="danger">Eliminar</button>
-        </form>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <form action="{{ url_for('manual_check', domain_id=d.id) }}" method="post">
+            <button type="submit" class="btn-primary" style="width:100%; font-size:12px; padding:7px 10px;">⟳ Chequear</button>
+          </form>
+          <a href="{{ url_for('edit_domain', domain_id=d.id) }}" class="btn-secondary"
+             style="width:100%; font-size:12px; padding:7px 10px; display:block; text-align:center;">✏ Editar</a>
+          <form action="{{ url_for('delete_domain', domain_id=d.id) }}" method="post"
+                onsubmit="return confirm('¿Eliminar {{ d.domain }}?');">
+            <button type="submit" class="danger" style="width:100%; font-size:12px; padding:7px 10px;">✕ Eliminar</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% endfor %}
