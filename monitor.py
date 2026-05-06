@@ -108,6 +108,14 @@ def send_email(subject: str, html: str, attachments=None):
     if not cfg.get("FROM_EMAIL") or not cfg.get("TO_EMAILS"):
         return
 
+    api_key = cfg.get("SMTP_PASS")
+
+    # Usar Brevo API si hay clave disponible (evita que Exim local intercepte SMTP)
+    if api_key and api_key.startswith("xsmtpsib-"):
+        _send_email_brevo_api(subject, html, cfg)
+        return
+
+    # Fallback: SMTP estándar
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = cfg["FROM_EMAIL"]
@@ -137,6 +145,41 @@ def send_email(subject: str, html: str, attachments=None):
         if user and passwd:
             s.login(user, passwd)
         s.send_message(msg)
+
+
+def _send_email_brevo_api(subject: str, html: str, cfg):
+    """Envía email via Brevo Transactional API (HTTP), evitando SMTP interceptado."""
+    api_key = cfg.get("SMTP_PASS")
+    from_email = cfg.get("FROM_EMAIL", "")
+    to_emails = cfg.get("TO_EMAILS", [])
+
+    # Parsear nombre del remitente si viene como "Nombre <email>"
+    import re
+    match = re.match(r"^(.*?)\s*<(.+?)>$", from_email)
+    if match:
+        from_name, from_addr = match.group(1).strip(), match.group(2).strip()
+    else:
+        from_name, from_addr = "Monitor OPT", from_email
+
+    payload = {
+        "sender": {"name": from_name, "email": from_addr},
+        "to": [{"email": e} for e in to_emails],
+        "subject": subject,
+        "htmlContent": html,
+    }
+
+    resp = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        json=payload,
+        headers={
+            "api-key": api_key,
+            "Content-Type": "application/json",
+        },
+        timeout=15,
+    )
+
+    if resp.status_code not in (200, 201):
+        raise Exception(f"Brevo API error {resp.status_code}: {resp.text}")
 
 
 def format_local(dt: datetime) -> str:
