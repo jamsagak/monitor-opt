@@ -272,6 +272,9 @@ def create_app():
             gchat = request.form.get("gchat_webhook", "").strip()
             Settings.set("gchat_webhook", gchat)
 
+            to_emails = request.form.get("to_emails", "").strip()
+            Settings.set("to_emails", to_emails)
+
             reschedule_jobs(app)
             flash("Configuración guardada.", "success")
             return redirect(url_for("admin_settings"))
@@ -282,6 +285,7 @@ def create_app():
             "hour2": Settings.get("schedule_hour2", "16"),
             "min2":  Settings.get("schedule_min2",  "0"),
             "gchat_webhook": Settings.get("gchat_webhook", ""),
+            "to_emails": Settings.get("to_emails", ", ".join(app.config.get("TO_EMAILS", []))),
         }
         return render_template("admin_settings.html", cfg=cfg)
 

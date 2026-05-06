@@ -46,6 +46,14 @@
 
     <h3 style="color: var(--primary); margin: 0 0 12px;">Notificaciones</h3>
 
+    <label for="to_emails">Destinatarios del correo</label>
+    <input type="text" name="to_emails" id="to_emails"
+           value="{{ cfg.to_emails }}"
+           placeholder="correo1@dominio.com, correo2@dominio.com">
+    <p class="muted" style="font-size:12px; margin-top:-10px; margin-bottom:20px;">
+      Separados por coma. Ej: javier@empresa.com, ops@empresa.com
+    </p>
+
     <label for="gchat_webhook">Webhook Google Chat</label>
     <input type="text" name="gchat_webhook" id="gchat_webhook"
            value="{{ cfg.gchat_webhook }}"

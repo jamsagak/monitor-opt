@@ -151,7 +151,13 @@ def _send_email_brevo_api(subject: str, html: str, cfg):
     """Envía email via Brevo Transactional API (HTTP), evitando SMTP interceptado."""
     api_key = cfg.get("SMTP_PASS")
     from_email = cfg.get("FROM_EMAIL", "")
-    to_emails = cfg.get("TO_EMAILS", [])
+
+    # TO_EMAILS: primero desde Settings DB, luego desde .env
+    db_emails = Settings.get("to_emails", "")
+    if db_emails:
+        to_emails = [e.strip() for e in db_emails.split(",") if e.strip()]
+    else:
+        to_emails = cfg.get("TO_EMAILS", [])
 
     # Parsear nombre del remitente si viene como "Nombre <email>"
     import re
@@ -193,64 +199,68 @@ def format_local(dt: datetime) -> str:
 def email_digest(domains):
     rows = []
     for d in domains:
-        shot_rel = d.last_screenshot_path.replace("static/", "") if d.last_screenshot_path else ""
-        img_tag = (
-            f'<img src="{current_app.config["BASE_URL"]}/static/{shot_rel}" '
-            f'alt="{d.domain}" style="max-width:480px;height:auto;" />'
-            if shot_rel
-            else "(sin captura)"
-        )
         status_color = "#16a34a" if d.last_status == "OK" else "#dc2626"
         status_dot = (
-            f'<span style="display:inline-block;width:10px;height:10px;'
-            f'border-radius:50%;background:{status_color};margin-right:6px;"></span>'
-            f'{d.last_status or "N/A"}'
+            f'<span style="display:inline-block;width:12px;height:12px;'
+            f'border-radius:50%;background:{status_color};margin-right:6px;vertical-align:middle;"></span>'
+            f'<strong style="color:{status_color}">{d.last_status or "N/A"}</strong>'
         )
         days = d.days_to_expiry()
         expiry_txt = f"{d.expiry_date}" if d.expiry_date else "—"
         if days is not None and d.expiry_date:
-            expiry_txt += f" ({days} días)"
+            expiry_color = "#dc2626" if days < 30 else "#ca8a04" if days < 60 else "inherit"
+            expiry_txt += f' <span style="color:{expiry_color}">({days} días)</span>'
         last_check = format_local(d.last_checked_at)
+        error_txt = f'<span style="color:#dc2626">{d.last_error}</span>' if d.last_error else "—"
         rows.append(f"""
         <tr>
-          <td>{d.domain}</td>
+          <td><a href="https://{d.domain}" style="color:#5ca638;">{d.domain}</a></td>
           <td>{d.client}</td>
-          <td>{d.provider or ""}</td>
+          <td>{d.provider or "—"}</td>
           <td>{expiry_txt}</td>
           <td>{status_dot}</td>
-          <td>{d.last_http_code or ""}</td>
-          <td>{d.last_error or ""}</td>
-          <td>
-            {img_tag}
-            <div style="color:#666;font-size:12px;">{last_check}</div>
-          </td>
+          <td>{d.last_http_code or "—"}</td>
+          <td style="font-size:12px;">{error_txt}</td>
+          <td style="color:#666;font-size:12px;">{last_check}</td>
         </tr>""")
 
-    # Fecha de generación en hora local
     tz = pytz.timezone(current_app.config.get("TIMEZONE", "America/Lima"))
     local_now = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(tz)
+    ok_count = sum(1 for d in domains if d.last_status == "OK")
+    err_count = len(domains) - ok_count
 
     html = f"""
-<html><body>
-  <h2>Reporte de Monitoreo de Sitios</h2>
-  <table border="1" cellspacing="0" cellpadding="6">
-    <thead>
-      <tr>
-        <th>Dominio</th>
-        <th>Cliente</th>
-        <th>Proveedor</th>
-        <th>Vencimiento</th>
-        <th>Estado</th>
-        <th>Código HTTP</th>
-        <th>Error</th>
-        <th>Última captura</th>
-      </tr>
-    </thead>
-    <tbody>
-      {''.join(rows)}
-    </tbody>
-  </table>
-  <p>Generado: {local_now.strftime("%Y-%m-%d %H:%M:%S %Z")}</p>
+<html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;">
+  <div style="max-width:900px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background:#1a1f29;padding:20px 24px;border-bottom:3px solid #5ca638;">
+      <h2 style="margin:0;color:#5ca638;font-size:20px;">🔍 Reporte de Monitoreo de Sitios</h2>
+      <p style="margin:4px 0 0;color:#9aa6b6;font-size:13px;">Generado: {local_now.strftime("%d/%m/%Y %H:%M:%S %Z")}</p>
+    </div>
+    <div style="padding:16px 24px;background:#f8f9fa;border-bottom:1px solid #e2e8f0;">
+      <span style="margin-right:20px;">✅ <strong>{ok_count}</strong> operativos</span>
+      <span>❌ <strong>{err_count}</strong> con problemas</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#141922;color:#eaeef5;">
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Dominio</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Cliente</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Proveedor</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Vencimiento</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Estado</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">HTTP</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Error</th>
+          <th style="padding:12px 14px;text-align:left;font-size:13px;">Último chequeo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(rows)}
+      </tbody>
+    </table>
+    <div style="padding:16px 24px;background:#f8f9fa;text-align:center;color:#9aa6b6;font-size:12px;border-top:1px solid #e2e8f0;">
+      OPT MEDIA LATAM · Monitor de Sitios · <a href="{current_app.config.get('BASE_URL','')}" style="color:#5ca638;">Ver panel</a>
+    </div>
+  </div>
 </body></html>
 """
     return html
@@ -279,7 +289,16 @@ def send_google_chat(domains):
 
     payload = {"text": "\n".join(lines)}
     try:
-        requests.post(webhook_url, json=payload, timeout=10)
+        resp = requests.post(
+            webhook_url,
+            json=payload,
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            print(f"[WARN] Google Chat HTTP {resp.status_code}: {resp.text[:200]}")
+        else:
+            print("[INFO] Google Chat enviado OK")
     except Exception as e:
         print(f"[WARN] Google Chat error: {e}")
 
@@ -288,11 +307,8 @@ def run_full_cycle():
     domains = Domain.query.order_by(Domain.client.asc()).all()
     if not domains:
         return
-    shots = []
     for d in domains:
-        p = check_and_capture(d)
-        if p:
-            shots.append(p)
+        check_and_capture(d)
     html = email_digest(domains)
-    send_email("Monitoreo de sitios (ejecución programada)", html, attachments=shots)
+    send_email("Monitoreo de sitios — OPT MEDIA LATAM", html)
     send_google_chat(domains)
