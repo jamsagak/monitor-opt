@@ -130,8 +130,10 @@ def send_email(subject: str, html: str, attachments=None):
     passwd = cfg.get("SMTP_PASS")
 
     with smtplib.SMTP(host, port) as s:
+        s.ehlo()
         if port != 25:
             s.starttls()
+            s.ehlo()
         if user and passwd:
             s.login(user, passwd)
         s.send_message(msg)
